@@ -1,0 +1,400 @@
+
+
+
+===VIEW==========================================================================================
+1.
+CREATE VIEW tabelPegawaiUser AS
+SELECT data_pegawai.id_pegawai, pegawai.nama, divisi.nama_divisi, pegawai.jabatan, data_pegawai.telepon, data_pegawai.foto
+FROM data_pegawai, divisi,pegawai
+WHERE pegawai.id_divisi = divisi.id_divisi AND data_pegawai.id_pegawai =   pegawai.id_pegawai;
+
+
+2.
+CREATE VIEW tabelGajiUser AS
+SELECT data_pegawai.id_pegawai,gaji.id_gaji, data_pegawai.nama_pegawai, gaji.tanggal, gaji.jumlah, gaji.bonus,(gaji.jumlah+gaji.bonus)*0.05 AS pajak, gaji.jumlah+gaji.bonus-((gaji.jumlah+gaji.bonus)*0.05) AS total
+FROM gaji, data_pegawai
+WHERE gaji.id_pegawai = data_pegawai.id_pegawai;
+
+
+3. 
+CREATE VIEW tabelAbsenUser AS
+SELECT pegawai.id_pegawai,absen.id_absen, pegawai.nama, absen.waktu
+FROM absen, pegawai
+WHERE pegawai.id_pegawai=absen.id_pegawai;
+
+
+4.
+CREATE VIEW tabelpegawaiadmin AS
+SELECT data_pegawai.*,pegawai.id_divisi,pegawai.jabatan,pegawai.status
+FROM data_pegawai INNER JOIN pegawai
+ON data_pegawai.id_pegawai=pegawai.id_pegawai;
+
+
+5.
+CREATE VIEW tabeldivisiinfo AS
+SELECT divisi.id_divisi,divisi.nama_divisi,COUNT(pegawai.id_pegawai),(SELECT pegawai.nama FROM pegawai WHERE pegawai.jabatan='Kepala Divisi' AND pegawai.id_divisi=divisi.id_divisi) AS ketua FROM divisi LEFT JOIN pegawai ON divisi.id_divisi=pegawai.id_divisi GROUP BY divisi.id_divisi
+
+
+===PROCEDURE========================================================================================
+
+1. 
+DELIMITER $$
+CREATE PROCEDURE select_emp_in_division(var1 VARCHAR(30))
+BEGIN
+	IF var1!='' THEN
+        SELECT pegawai.id_pegawai, pegawai.nama, divisi.nama_divisi, pegawai.jabatan,divisi.id_divisi
+        FROM divisi LEFT JOIN pegawai
+        ON pegawai.id_divisi = divisi.id_divisi WHERE divisi.nama_divisi = var1;
+        ELSE
+        SELECT pegawai.id_pegawai, pegawai.nama, divisi.nama_divisi, pegawai.jabatan,divisi.id_divisi
+        FROM divisi LEFT JOIN pegawai
+        ON pegawai.id_divisi = divisi.id_divisi
+        ORDER BY divisi.nama_divisi;
+        END IF;
+END $$
+DELIMITER $$
+    
+
+2. 
+DELIMITER $$
+CREATE PROCEDURE get_user_data(varid VARCHAR(30))
+BEGIN
+	SELECT data_pegawai.*, divisi.nama_divisi,pegawai.jabatan,pegawai.status
+    FROM data_pegawai, divisi, pegawai
+    WHERE (pegawai.id_divisi = divisi.id_divisi AND data_pegawai.id_pegawai = 	 pegawai.id_pegawai) AND data_pegawai.id_pegawai = varid;
+END $$
+DELIMITER $$
+
+3. 
+DELIMITER $$
+CREATE PROCEDURE insert_to_pegawai (
+v1 VARCHAR(28), 
+v2 VARCHAR(50), 
+v3 VARCHAR(10), 
+v4 VARCHAR(20))
+BEGIN
+	INSERT INTO pegawai(id_pegawai,nama,jabatan,id_divisi,status)
+    VALUES (v1, v2, v3, v4,v5);
+    IF v3='Kepala Divisi' THEN
+    	IF NOT EXISTS(SELECT * FROM ketua.id_divisi=v4) THEN
+        INSERT INTO ketua(ketua.id_pegawai,ketua.id_divisi) VALUES (v1,v4);
+        END IF;
+        END IF;
+END $$
+DELIMITER ;
+
+
+4. 
+CREATE PROCEDURE insert_to_gaji (
+va1 VARCHAR(8), 
+va2 VARCHAR(8), 
+va3 DATE, 
+va4 INT(12), 
+va5 INT(12)
+)
+BEGIN
+	INSERT INTO gaji(`id_pegawai`,`tanggal`,`jumlah`,`bonus`)
+    VALUES (va1, va2, va3, va4);
+END $$
+DELIMITER $$
+
+
+5.
+DELIMITER $$
+CREATE PROCEDURE insert_to_absen (
+vi1 VARCHAR(8), 
+vi3 DATETIME
+)
+BEGIN
+	INSERT INTO absen(`id_absen`,`waktu`)
+    VALUES (vi1, vi3);
+END $$
+DELIMITER $$
+
+
+6. 
+DELIMITER $$
+CREATE PROCEDURE insert_to_divisi (
+ve1 VARCHAR(3), 
+ve2 VARCHAR(20))
+BEGIN
+	INSERT INTO divisi(`id_divisi`,`nama_divisi`)
+    VALUES (ve1, ve2);
+END $$
+DELIMITER $$
+
+
+UPDATE PROCEDURE======================================================================================
+1. 
+CREATE PROCEDURE update_divisi (
+ver1 VARCHAR(3), 
+ver2 VARCHAR(20),
+ver3 VARCHAR(20))
+BEGIN
+	UPDATE divisi
+    SET `nama_divisi` = ver2
+    WHERE id_divisi = ver1;
+    UPDATE pegawai
+    SET pegawai.jabatan='Kepala Divisi' WHERE pegawai.id_pegawai=ver3;
+END $$
+DELIMITER $$
+
+
+2.
+DELIMITER $$
+CREATE PROCEDURE update_gaji (
+vari1 VARCHAR(8), 
+vari2 VARCHAR(8), 
+vari3 DATE, 
+vari4 INT(12), 
+vari5 INT(12)))
+BEGIN
+	UPDATE gaji
+    SET `tanggal`=vari3,`jumlah`=vari4,`bonus`=vari5
+    WHERE id_gaji=vari2 AND id_pegawai=vari1 ;
+END $$
+DELIMITER ;
+
+
+3.
+DELIMITER $$
+CREATE PROCEDURE update_absen (
+vir1 VARCHAR(8), 
+vir2 VARCHAR(8), 
+vir3 DATETIME)
+BEGIN
+	UPDATE absen
+    SET `waktu` = vir3
+    WHERE `id_absen`=vir1 OR `id_pegawai`=vir2;
+END $$
+
+DELIMITER $$
+CREATE PROCEDURE update_password ( 
+vir1 VARCHAR(8), 
+vir2 VARCHAR(8)) 
+BEGIN 
+DECLARE pass TEXT; SET pass = (SELECT user.password FROM user WHERE user.username=vir1); 
+IF pass=vir2 THEN UPDATE user SET user.password = vir3 WHERE user.username=vir1; END IF; 
+END$$
+DELIMITER;
+
+DELIMITER $$
+CREATE PROCEDURE update_data_pegawai (
+v1 VARCHAR(8), 
+v2 VARCHAR(20), 
+v3 VARCHAR(50), 
+v4 INT(2), 
+v5 VARCHAR(30), 
+v6 DATE, 
+v7 VARCHAR(25), 
+v8 VARCHAR(25), 
+v9 VARCHAR(50), 
+v10 VARCHAR(30), 
+v11 VARCHAR(12), 
+v12 VARCHAR(30))
+BEGIN
+	UPDATE data_pegawai
+    SET 
+    no_identitas=v2,
+    nama_pegawai=v3,
+    jenis_kelamin=v4,
+    tempat_lahir=v5,
+    tanggal_lahir=v6, 
+    pendidikan=v7, 
+    almamater=v8, 
+    alamat=v9, 
+    domisili=v10,
+    telepon=v11, 
+    email=v12
+    WHERE  id_pegawai=v1;
+END $$
+DELIMITER $$
+
+DELIMITER $$
+CREATE PROCEDURE update_profile_emp_procedure (
+v1 VARCHAR(8), 
+v2 VARCHAR(20), 
+v3 VARCHAR(50), 
+v4 INT(2), 
+v5 VARCHAR(30), 
+v6 DATE, 
+v7 VARCHAR(25), 
+v8 VARCHAR(25), 
+v9 VARCHAR(50), 
+v10 VARCHAR(30), 
+v11 VARCHAR(12), 
+v12 VARCHAR(30),
+vrb2 VARCHAR(3), 
+vrb3 VARCHAR(20))
+BEGIN
+	UPDATE data_pegawai
+    SET 
+    no_identitas=v2,
+    nama_pegawai=v3,
+    jenis_kelamin=v4,
+    tempat_lahir=v5,
+    tanggal_lahir=v6, 
+    pendidikan=v7, 
+    almamater=v8, 
+    alamat=v9, 
+    domisili=v10,
+    telepon=v11, 
+    email=v12
+    WHERE  id_pegawai=v1;
+    
+ UPDATE pegawai
+    SET id_divisi = vrb2, jabatan =vrb3
+    WHERE id_pegawai = v1;
+
+    IF vrb3='Kepala Divisi' THEN
+    	IF NOT EXISTS(SELECT * FROM ketua.id_divisi=v4) THEN
+        INSERT INTO ketua(ketua.id_pegawai,ketua.id_divisi) VALUES (v1,vrb2);
+        END IF;
+        END IF;
+
+END $$
+DELIMITER $$
+
+delete===============================================================================================
+
+1. 
+
+DELIMITER $$
+CREATE PROCEDURE delete_in_gaji(
+vor1 VARCHAR(8)
+)
+BEGIN
+	DELETE FROM gaji
+    WHERE id_gaji = vor1;
+END $$
+DELIMITER $$
+
+
+2.
+DELIMITER $$
+CREATE PROCEDURE delete_in_absen (
+vur1 VARCHAR(8)
+)
+BEGIN
+	DELETE FROM absen
+    WHERE id_absen = vur1;
+END $$
+DELIMITER $$
+
+3.
+DELIMITER //
+CREATE PROCEDURE delete_ketua(
+    IN var VARCHAR(20)
+    )
+    BEGIN
+    IF EXISTS(SELECT * FROM ketua.id_pegawai=var) THEN
+    	DELETE FROM ketua WHERE ketua.id_pegawai=var;
+        END IF;
+   	END//
+DELIMITER ;
+
+seacrc procedure======================================================================================
+DELIMITER //
+CREATE PROCEDURE search_procedure(
+    IN keyword TEXT,
+    IN mode VARCHAR(10)
+)
+	BEGIN
+    IF mode='pegawai' THEN
+    	SELECT * FROM tabelpegawaiuser WHERE tabelpegawaiuser.id_pegawai LIKE '%keyword%' OR tabelpegawaiuser.nama_pegawai LIKE '%keyword%';
+    ELSEIF mode='gaji' THEN
+    	SELECT * FROM tabelgajiuser WHERE tabelgajiuser.id_pegawai LIKE '%keyword%' OR tabelgajiuser.nama_pegawai LIKE '%keyword%';
+    ELSEIF mode='absen' THEN
+    	SELECT * FROM tabelabsenuser WHERE tabelabsenuser.id_pegawai LIKE '%keyword%' OR tabelabsenuser.nama_pegawai LIKE '%keyword%';
+    ELSE
+    	SELECT * FROM tabelpegawaiadmin WHERE tabelpegawaiadmin.id_pegawai LIKE '%keyword%' OR tabelpegawaiadmin.nama_pegawai LIKE '%keyword%';
+    END IF;
+    END//
+DELIMITER ;
+
+
+select procedure================================================================================================
+1.
+DELIMITER //
+
+CREATE PROCEDURE select_dataview_user(
+    IN data VARCHAR(100)
+    )
+    BEGIN
+    	IF data='pegawai' THEN
+        	SELECT * FROM tabelpegawaiuser;
+        ELSEIF data='absen' THEN
+        	SELECT * FROM tabelabsenuser WHERE id_pegawai=data2;
+        ELSEIF data='gaji' THEN
+        	SELECT * FROM tabelgajiuser WHERE id_pegawai=data2;
+       	ELSE
+        	SELECT 'DATA NOT FOUND';
+        END IF;
+  	END//
+DELIMITER ;          
+================================================================================================
+DELIMITER //
+CREATE PROCEDURE login_procedure(
+    IN username VARCHAR(20),
+    IN password text
+    )
+    BEGIN
+    	SELECT * FROM user WHERE user.username=username AND user.password=password;
+    END//
+DELIMITER ;
+=====================================
+
+CREATE PROCEDURE  filter_gaji1(
+IN mode VARCHAR(5))
+BEGIN
+DECLARE rata INT;
+SET rata=(SELECT AVG(tabelgajiuser.total) FROM tabelgajiuser);
+	IF mode='1' THEN
+    SELECT * FROM tabelgajiuser GROUP BY id_gaji HAVING AVG(tabelgajiuser.jumlah)>tabelgajiuser.total ORDER BY tabelgajiuser.total;
+	ELSEIF mode='2' THEN
+    SELECT * FROM tabelgajiuser GROUP BY id_gaji HAVING AVG(tabelgajiuser.jumlah)<tabelgajiuser.total ORDER BY tabelgajiuser.total;
+    ELSE
+    SELECT * FROM tabelgajiuser WHERE rata<tabelgajiuser.jumlah 
+    UNION
+     SELECT * FROM tabelgajiuser WHERE rata<tabelgajiuser.bonus ;
+     END IF;
+     END
+
+================================================================================================
+TRIGGER
+
+DELIMITER //
+CREATE TRIGGER usertabel_input_trig
+	AFTER INSERT ON pegawai
+    FOR EACH ROW
+    BEGIN
+    	INSERT INTO user(user.username,user.password,user.level)
+        	VALUES(new.id_pegawai,SHA1('1234567'),
+                   CASE
+                        WHEN new.id_divisi='A1' THEN 1
+                        ELSE 2
+                    END
+                   );
+    END//
+DELIMITER ;
+================================================================================================
+DELIMITER //
+
+CREATE TRIGGER datapegawai_input_trig
+	AFTER INSERT ON pegawai
+    FOR EACH ROW
+    BEGIN
+    	INSERT INTO data_pegawai(data_pegawai.id_pegawai,data_pegawai.nama_pegawai)
+        	VALUES(new.id_pegawai,new.nama);
+    END//
+DELIMITER ;
+================================================================================================================================
+DELIMITER //
+CREATE TRIGGER update_pegawai
+	AFTER UPDATE 
+    ON data_pegawai
+    FOR EACH ROW
+    BEGIN
+    	UPDATE pegawai SET pegawai.nama=new.nama_pegawai WHERE pegawai.id_pegawai=new.id_pegawai;
+    END//
+DELIMITER ;
